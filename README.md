@@ -1,6 +1,9 @@
 # apache-spark-programming-course
 A repository for notes related to the Apache Spark Programming course within Databricks Partner Learning.
 
+### How to Use This Repo
+Please make a branch for your own work, and then commit to it. The main branch should stay untouched so any new user can check out their branch based off of it for a fresh start.
+
 Associated with the following course:
 [Apache Spark Programming](https://partner-academy.databricks.com/learn/course/63)
 
