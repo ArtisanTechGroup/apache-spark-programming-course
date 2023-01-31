@@ -214,9 +214,9 @@ display(df)
 
 # COMMAND ----------
 
-# TODO
+from pyspark.sql.functions import sum, avg
 
-trafficDF = (df.FILL_IN
+trafficDF = (df.groupBy("traffic_source").agg(sum("revenue").alias("total_rev"), avg("revenue").alias("avg_rev"))
 )
 
 display(trafficDF)
@@ -243,8 +243,7 @@ assert(expected1 == result1)
 
 # COMMAND ----------
 
-# TODO
-topTrafficDF = (trafficDF.FILL_IN
+topTrafficDF = (trafficDF.sort("total_rev", ascending=False).limit(3)
 )
 display(topTrafficDF)
 
@@ -269,8 +268,9 @@ assert(expected2 == result2)
 
 # COMMAND ----------
 
-# TODO
-finalDF = (topTrafficDF.FILL_IN
+from pyspark.sql.types import LongType
+
+finalDF = (topTrafficDF.withColumn("avg_rev", (col("avg_rev") * 100).cast(LongType()) / 100).withColumn("total_rev", (col("total_rev") * 100).cast(LongType()) / 100)
 )
 
 display(finalDF)
@@ -295,7 +295,7 @@ assert(expected3 == result3)
 # COMMAND ----------
 
 # TODO
-bonusDF = (topTrafficDF.FILL_IN
+bonusDF = (topTrafficDF.withColumn("avg_rev", round("avg_rev", 2)).withColumn("total_rev", round("total_rev", 2))
 )
 
 display(bonusDF)
@@ -318,7 +318,7 @@ assert(expected4 == result4)
 # COMMAND ----------
 
 # TODO
-chainDF = (df.FILL_IN
+chainDF = (df.groupBy("traffic_source").agg(round(sum("revenue"), 2).alias("total_rev"), round(avg("revenue"), 2).alias("avg_rev")).sort("total_rev", ascending=False).limit(3)
 )
 
 display(chainDF)

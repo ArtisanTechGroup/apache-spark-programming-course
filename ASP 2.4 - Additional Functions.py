@@ -118,9 +118,9 @@ display(eventsDF)
 
 # COMMAND ----------
 
-# TODO
+
 from pyspark.sql.functions import *
-convertedUsersDF = (salesDF.FILL_IN
+convertedUsersDF = (salesDF.select("email").dropDuplicates().withColumn("converted", lit(True))
 )
 display(convertedUsersDF)
 
@@ -154,8 +154,9 @@ assert convertedUsersDF.select(col("converted")).first()[0] == True, "converted 
 
 # COMMAND ----------
 
-# TODO
-conversionsDF = (usersDF.FILL_IN
+from pyspark.sql import DataFrameNaFunctions
+
+conversionsDF = (usersDF.join(convertedUsersDF, "email", "outer").filter(col("email").isNotNull()).na.fill(False)
 )
 display(conversionsDF)
 
@@ -193,8 +194,8 @@ assert conversionsDF.filter(col("converted") == False).count() == expectedFalseC
 
 # COMMAND ----------
 
-# TODO
-cartsDF = (eventsDF.FILL_IN
+
+cartsDF = (eventsDF.withColumn("items", explode("items")).groupBy("user_id").agg(collect_set("items.item_id").alias("cart"))
 )
 display(cartsDF)
 
@@ -227,7 +228,7 @@ assert cartsDF.select(col("user_id")).drop_duplicates().count() == expectedCount
 # COMMAND ----------
 
 # TODO
-emailCartsDF = conversionsDF.FILL_IN
+emailCartsDF = conversionsDF.join(cartsDF, "user_id", "left")
 display(emailCartsDF)
 
 # COMMAND ----------
@@ -261,8 +262,8 @@ assert emailCartsDF.filter(col("cart").isNull()).count() == expectedCartNullCoun
 
 # COMMAND ----------
 
-# TODO
-abandonedCartsDF = (emailCartsDF.FILL_IN
+
+abandonedCartsDF = (emailCartsDF.where("converted == FALSE").where("cart IS NOT NULL")
 )
 display(abandonedCartsDF)
 
@@ -291,7 +292,7 @@ assert abandonedCartsDF.count() == expectedCount, "Counts do not match"
 # COMMAND ----------
 
 # TODO
-abandonedItemsDF = (abandonedCartsDF.FILL_IN
+abandonedItemsDF = (abandonedCartsDF.withColumn("items", explode("cart")).groupBy("items").count()
 )
 display(abandonedItemsDF)
 
