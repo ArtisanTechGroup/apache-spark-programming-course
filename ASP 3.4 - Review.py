@@ -60,15 +60,16 @@
 
 # COMMAND ----------
 
-# TODO
-
+from pyspark.sql.functions import *
 sourceFile = "dbfs:/mnt/training/dataframes/people-with-dups.txt"
 destFile = workingDir + "/people.parquet"
 
 # In case it already exists
 dbutils.fs.rm(destFile, True)
 
-# Complete your work here...
+df1 = spark.read.option("header", True).option("delimiter", ":").csv(sourceFile).withColumn("fullName", upper(concat("firstName", "middleName", "lastName"))).dropDuplicates(["fullName"]).drop("fullName")
+
+df1.coalesce(1).write.option("format", "delta").save(destFile)
 
 
 # COMMAND ----------
@@ -77,7 +78,7 @@ dbutils.fs.rm(destFile, True)
 
 # COMMAND ----------
 
-verify_files = dbutils.fs.ls(deltaDestDir)
+verify_files = dbutils.fs.ls(destFile)
 verify_delta_format = False
 verify_num_data_files = 0
 for f in verify_files:
@@ -87,9 +88,9 @@ for f in verify_files:
         verify_num_data_files += 1
 
 assert verify_delta_format, "Data not written in Delta format"
-assert verify_num_data_files == 1, "Expected 1 data file written"
+assert verify_num_data_files == 1, f'Expected 1 data file written, instead there were {verify_num_data_files}'
 
-verify_record_count = spark.read.format("delta").load(deltaDestDir).count()
+verify_record_count = spark.read.format("delta").load(destFile).count()
 assert verify_record_count == 100000, "Expected 100000 records in final result"
 
 del verify_files, verify_delta_format, verify_num_data_files, verify_record_count
