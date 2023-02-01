@@ -205,7 +205,7 @@ display(df)
 # COMMAND ----------
 
 # TODO
-timeStampString = <FILL_IN>
+timeStampString = "2023-02-01T17:39:57.000+0000"
 df = spark.read.format("delta").option("timestampAsOf", timeStampString).load(deltaPath)
 display(df)
 
@@ -278,7 +278,7 @@ deltaSalesPath = workingDir + "/delta-sales"
 # COMMAND ----------
 
 # TODO
-salesDF.FILL_IN
+salesDF.write.format("delta").save(deltaSalesPath)
 
 # COMMAND ----------
 
@@ -296,8 +296,11 @@ assert len(dbutils.fs.ls(deltaSalesPath)) > 0
 
 # COMMAND ----------
 
-# TODO
-updatedSalesDF = FILL_IN
+from pyspark.sql.functions import size
+
+display(salesDF)
+
+updatedSalesDF = salesDF.withColumn("items", size("items"))
 display(updatedSalesDF)
 
 # COMMAND ----------
@@ -320,7 +323,7 @@ assert updatedSalesDF.schema[6].dataType == IntegerType()
 # COMMAND ----------
 
 # TODO
-updatedSalesDF.FILL_IN
+updatedSalesDF.write.option("overwriteSchema", True).mode("overwrite").format("delta").save(deltaSalesPath)
 
 # COMMAND ----------
 
@@ -340,11 +343,12 @@ assert spark.read.format("delta").load(deltaSalesPath).schema[6].dataType == Int
 
 # COMMAND ----------
 
-# TODO
+# MAGIC %sql
+# MAGIC DROP TABLE IF EXISTS sales_delta;
 
 # COMMAND ----------
 
-# TODO
+spark.sql(f"CREATE TABLE sales_delta USING DELTA LOCATION '{deltaSalesPath}'");
 
 # COMMAND ----------
 
@@ -365,7 +369,7 @@ assert salesDeltaDF.schema[6].dataType == IntegerType()
 # COMMAND ----------
 
 # TODO
-oldSalesDF = FILL_IN
+oldSalesDF = spark.read.format("delta").option("versionAsOf", 0).load(deltaSalesPath)
 display(oldSalesDF)
 
 # COMMAND ----------

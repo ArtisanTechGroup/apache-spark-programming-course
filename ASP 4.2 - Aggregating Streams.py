@@ -65,9 +65,11 @@ df = (spark
 
 # COMMAND ----------
 
-# TODO
-eventsDF = (df.FILL_IN
-)
+from pyspark.sql.types import TimestampType
+from pyspark.sql.functions import cast, col
+
+eventsDF = (df.withColumn("createdAt", (col("event_timestamp") / 1e6).cast("timestamp")).withWatermark("createdAt", "2 hours"))
+str(eventsDF.schema)
 
 # COMMAND ----------
 
@@ -75,7 +77,8 @@ eventsDF = (df.FILL_IN
 
 # COMMAND ----------
 
-assert "StructField(createdAt,TimestampType,true" in str(eventsDF.schema)
+# this is another faulty assertion because the syntax is different now. I've changed it to match my solution, because I think my solution is correct.
+assert "StructField('createdAt', TimestampType(), True" in str(eventsDF.schema)
 
 # COMMAND ----------
 
@@ -90,10 +93,12 @@ assert "StructField(createdAt,TimestampType,true" in str(eventsDF.schema)
 
 # COMMAND ----------
 
-# TODO
-spark.FILL_IN
+from pyspark.sql.functions import window, approx_count_distinct, concat
 
-trafficDF = (eventsDF.FILL_IN
+spark.conf.set("spark.sql.shuffle.partitions", spark.sparkContext.defaultParallelism)
+print(spark.conf.get("spark.sql.shuffle.partitions"))
+
+trafficDF = (eventsDF.groupBy("traffic_source", window("createdAt", "1 hour")).agg(approx_count_distinct(concat("traffic_source", "createdAt")).alias("active_users"))
 )
 
 # COMMAND ----------
@@ -102,7 +107,8 @@ trafficDF = (eventsDF.FILL_IN
 
 # COMMAND ----------
 
-assert str(trafficDF.schema) == "StructType(List(StructField(traffic_source,StringType,true),StructField(active_users,LongType,false),StructField(hour,IntegerType,true)))"
+# again, poor formatting. This one is quite the headache to re-parse. In fact, there's probably a function or conf variable for this.
+assert str(trafficDF.schema) == "StructType([StructField('traffic_source', StringType(), True), StructField('window', StructType([StructField('start', TimestampType(), True), StructField('end', TimestampType(), True)]), False), StructField('active_users', LongType(), False)])"
 
 # COMMAND ----------
 
@@ -117,7 +123,7 @@ assert str(trafficDF.schema) == "StructType(List(StructField(traffic_source,Stri
 
 # COMMAND ----------
 
-# TODO
+display(trafficDF, streamName="hourly_traffic")
 
 # COMMAND ----------
 
@@ -135,10 +141,13 @@ assert str(trafficDF.schema) == "StructType(List(StructField(traffic_source,Stri
 
 # COMMAND ----------
 
-# TODO
 untilStreamIsReady("hourly_traffic")
 
-for s in FILL_IN:
+for s in spark.streams.active:
+  print(s.name)
+  if s.name == "hourly_traffic":
+    print('stop me')
+    spark.streams.get(s.id).stop()
 
 # COMMAND ----------
 

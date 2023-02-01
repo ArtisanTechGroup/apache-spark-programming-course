@@ -139,7 +139,11 @@ schema = "order_id BIGINT, email STRING, transaction_timestamp BIGINT, total_ite
 # COMMAND ----------
 
 # TODO
-df = (spark.FILL_IN
+df = (spark
+      .readStream
+      .schema(schema)
+      .option("maxFilesPerTrigger", 1)
+      .parquet(salesPath)
 )
 
 # COMMAND ----------
@@ -161,9 +165,12 @@ assert df.columns == ["order_id", "email", "transaction_timestamp", "total_item_
 
 # COMMAND ----------
 
+from pyspark.sql.functions import explode
+print(df.schema)
 # TODO
-couponSalesDF = (df.FILL_IN
+couponSalesDF = (df.withColumn("items", explode("items")).where("items.coupon IS NOT NULL")
 )
+print(couponSalesDF.schema)
 
 # COMMAND ----------
 
@@ -172,7 +179,8 @@ couponSalesDF = (df.FILL_IN
 # COMMAND ----------
 
 schemaStr = str(couponSalesDF.schema)
-assert "StructField(items,StructType(List(StructField(coupon" in schemaStr, "items column was not exploded"
+# I think this string was previously just outdated output for the schema method. Could be wrong, but I think I did it correctly.
+assert "StructField('items', StructType([StructField('coupon'" in schemaStr, "items column was not exploded"
 
 # COMMAND ----------
 
@@ -191,7 +199,14 @@ assert "StructField(items,StructType(List(StructField(coupon" in schemaStr, "ite
 couponsCheckpointPath = workingDir + "/coupon-sales/checkpoint"
 couponsOutputPath = workingDir + "/coupon-sales/output"
 
-couponSalesQuery = (couponSalesDF.FILL_IN
+couponSalesQuery = (couponSalesDF
+                .writeStream
+                .outputMode("append")
+                .format("parquet")
+                .queryName("coupon_sales")
+                .trigger(processingTime="1 second")
+                .option("checkpointLocation", couponsCheckpointPath)
+                .start(couponsOutputPath)
 )
 
 # COMMAND ----------
@@ -215,12 +230,12 @@ assert "coupon_sales" in couponSalesQuery.lastProgress["name"]
 # COMMAND ----------
 
 # TODO
-queryID = couponSalesQuery.FILL_IN
+queryID = couponSalesQuery.id
 
 # COMMAND ----------
 
 # TODO
-queryStatus = couponSalesQuery.FILL_IN
+queryStatus = couponSalesQuery.status
 
 # COMMAND ----------
 
@@ -239,7 +254,7 @@ assert list(queryStatus.keys()) == ["message", "isDataAvailable", "isTriggerActi
 # COMMAND ----------
 
 # TODO
-couponSalesQuery.FILL_IN
+couponSalesQuery.stop()
 
 # COMMAND ----------
 
@@ -255,7 +270,14 @@ assert not couponSalesQuery.isActive
 
 # COMMAND ----------
 
-# TODO
+file_infos = dbutils.fs.ls(couponsOutputPath)
+
+parquet_count = 0
+for file in file_infos:
+  if ".parquet" in file.name:
+    parquet_count = parquet_count + 1
+  
+assert parquet_count > 0
 
 # COMMAND ----------
 
